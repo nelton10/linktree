@@ -79,28 +79,27 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-        // ==========================================
-        // CONFIGURAÇÃO DO FIREBASE
-        // Substitui os valores abaixo pelos teus dados do Console do Firebase
-        // ==========================================
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : {
-                apiKey: "A tua API Key aqui",
-                authDomain: "teu-projeto.firebaseapp.com",
-                projectId: "teu-projeto",
-                storageBucket: "teu-projeto.appspot.com",
-                messagingSenderId: "000000000000",
-                appId: "1:000000000000:web:000000000000"
-            };
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyClQRR4RIl0sGXurwaHtwMCc-tvllNJ1Pk",
+  authDomain: "links-4ecad.firebaseapp.com",
+  projectId: "links-4ecad",
+  storageBucket: "links-4ecad.firebasestorage.app",
+  messagingSenderId: "265797866816",
+  appId: "1:265797866816:web:4f01a1f8861dd4b3c2d6a5",
+  measurementId: "G-SFM0CX938Z"
+};
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'meu-linktree-oficial';
         
         const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
@@ -347,4 +346,5 @@
         init();
     </script>
 </body>
+
 </html>
