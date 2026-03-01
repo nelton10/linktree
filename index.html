@@ -8,122 +8,68 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-        
-        body { 
-            font-family: 'Inter', sans-serif; 
-            min-height: 100vh;
-            background-color: #ffffff;
-            color: #0f172a;
-        }
-
-        .dark body { 
-            background-color: #020617;
-            color: #f8fafc;
-        }
-
-        .solid-card {
-            background-color: #f1f5f9;
-            border: 2px solid #e2e8f0;
-            transition: all 0.2s ease-in-out;
-        }
-
-        .dark .solid-card {
-            background-color: #1e293b;
-            border: 2px solid #334155;
-        }
-
-        .link-card:hover {
-            transform: translateY(-2px);
-            border-color: #4f46e5;
-            background-color: #ffffff;
-        }
-
-        .dark .link-card:hover {
-            background-color: #0f172a;
-            border-color: #818cf8;
-        }
-
-        .fade-in {
-            animation: fadeIn 0.4s ease-out forwards;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .admin-input {
-            border: 2px solid #cbd5e1;
-            background-color: #ffffff;
-        }
-
-        .dark .admin-input {
-            border: 2px solid #334155;
-            background-color: #0f172a;
-            color: white;
-        }
-
-        .admin-input:focus {
-            border-color: #4f46e5;
-            outline: none;
-        }
+        body { font-family: 'Inter', sans-serif; min-height: 100vh; background-color: #ffffff; color: #0f172a; }
+        .dark body { background-color: #020617; color: #f8fafc; }
+        .solid-card { background-color: #f1f5f9; border: 2px solid #e2e8f0; transition: all 0.2s ease-in-out; }
+        .dark .solid-card { background-color: #1e293b; border: 2px solid #334155; }
+        .link-card:hover { transform: translateY(-2px); border-color: #4f46e5; background-color: #ffffff; }
+        .dark .link-card:hover { background-color: #0f172a; border-color: #818cf8; }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .admin-input { border: 2px solid #cbd5e1; background-color: #ffffff; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; }
+        .dark .admin-input { border: 2px solid #334155; background-color: #0f172a; color: white; }
     </style>
 </head>
 <body class="antialiased transition-colors duration-300">
 
     <div id="app" class="max-w-md mx-auto px-6 py-12 relative z-10">
-        <div id="loading" class="flex flex-col items-center justify-center space-y-4 py-32">
-            <div class="w-10 h-10 border-4 border-slate-300 border-t-indigo-600 rounded-full animate-spin"></div>
-            <p class="font-bold text-slate-500 text-sm tracking-widest text-center uppercase">A Carregar...</p>
+        <div id="status-container" class="flex flex-col items-center justify-center space-y-4 py-32 text-center">
+            <div id="loader" class="w-10 h-10 border-4 border-slate-300 border-t-indigo-600 rounded-full animate-spin"></div>
+            <p id="status-text" class="font-bold text-slate-500 text-sm tracking-widest uppercase">A Sincronizar com Firebase...</p>
         </div>
     </div>
 
     <script type="module">
-        import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyClQRR4RIl0sGXurwaHtwMCc-tvllNJ1Pk",
-  authDomain: "links-4ecad.firebaseapp.com",
-  projectId: "links-4ecad",
-  storageBucket: "links-4ecad.firebasestorage.app",
-  messagingSenderId: "265797866816",
-  appId: "1:265797866816:web:4f01a1f8861dd4b3c2d6a5",
-  measurementId: "G-SFM0CX938Z"
-};
+        // Credenciais atualizadas do projeto gestao-anisio
+        const firebaseConfig = {
+            apiKey: "AIzaSyCb2Cmqwivdgb_YgCUQbcx43S38QYRDapA",
+            authDomain: "gestao-anisio.firebaseapp.com",
+            projectId: "gestao-anisio",
+            storageBucket: "gestao-anisio.firebasestorage.app",
+            messagingSenderId: "946435999048",
+            appId: "1:946435999048:web:a3cae6ed73c21a30b59f7d",
+            measurementId: "G-KHL4B7MR3X"
+        };
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'meu-linktree-oficial';
+        const appId = "meu-linktree-oficial";
         
         const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
         const db = getFirestore(app);
         const auth = getAuth(app);
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'main');
 
         let state = {
-            profile: {
-                name: "O Seu Nome",
-                bio: "Desenvolvedor & Criador de Conteúdo",
-                photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400",
-                verified: true
-            },
-            links: [
-                { id: 'l1', title: "Website", url: "#", icon: "globe", color: "indigo", clicks: 0 },
-                { id: 'l2', title: "WhatsApp", url: "#", icon: "message-circle", color: "emerald", clicks: 0 }
-            ],
+            profile: { name: "O Teu Nome", bio: "Bio configurada. Clica abaixo para editar.", photo: "https://via.placeholder.com/150", verified: true },
+            links: [],
             socials: { instagram: "", linkedin: "", twitter: "", github: "" },
             view: 'home',
             user: null
         };
 
-        const appContainer = document.getElementById('app');
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'main');
+        const showError = (msg) => {
+            const text = document.getElementById('status-text');
+            const loader = document.getElementById('loader');
+            if (loader) loader.classList.add('hidden');
+            if (text) text.innerHTML = `<span class="text-red-500 font-bold block mb-2 text-lg">ERRO</span><span class="text-slate-400 normal-case">${msg}</span>`;
+        };
 
         async function init() {
             try {
+                // Autenticação Silenciosa
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
@@ -132,219 +78,116 @@ const analytics = getAnalytics(app);
 
                 onAuthStateChanged(auth, (user) => {
                     state.user = user;
-                    if (user) setupDataListener();
+                    if (user) {
+                        onSnapshot(docRef, (docSnap) => {
+                            if (docSnap.exists()) {
+                                const data = docSnap.data();
+                                state.profile = data.profile || state.profile;
+                                state.links = data.links || [];
+                                state.socials = data.socials || state.socials;
+                            }
+                            render();
+                        }, (err) => {
+                            showError("Erro Firestore: Verifica se ativaste a base de dados e as regras de acesso.");
+                        });
+                    }
                 });
-            } catch (error) { 
-                console.error("Erro Auth:", error);
-                appContainer.innerHTML = '<p class="text-red-500 font-bold text-center">Configura o Firebase no código para começar.</p>';
+            } catch (error) {
+                showError("Erro Firebase: Ativa o 'Anonymous Sign-in' no menu Authentication.");
             }
         }
 
-        function setupDataListener() {
-            onSnapshot(docRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    state.profile = data.profile || state.profile;
-                    state.links = data.links || state.links;
-                    state.socials = data.socials || state.socials;
-                }
-                render();
-            }, (err) => {
-                console.error("Firestore error:", err);
-                render();
-            });
-        }
-
-        const getPersistableData = (overrides = {}) => ({
-            profile: overrides.profile || state.profile,
-            links: overrides.links || state.links,
-            socials: overrides.socials || state.socials
-        });
-
-        window.trackClick = async (linkId) => {
-            if (!state.user) return;
-            const updatedLinks = state.links.map(l => 
-                l.id === linkId ? { ...l, clicks: (l.clicks || 0) + 1 } : l
-            );
-            try {
-                await setDoc(docRef, getPersistableData({ links: updatedLinks }), { merge: true });
-            } catch (e) { console.error(e); }
+        // Funções de Interface
+        window.setView = (v) => { state.view = v; render(); };
+        window.handleLogin = () => {
+            if (document.getElementById('passInput').value === 'admin') window.setView('admin');
+            else alert('Senha incorreta!');
         };
-
-        window.render = () => {
-            appContainer.innerHTML = '';
-            if (state.view === 'home') renderHome();
-            else if (state.view === 'login') renderLogin();
-            else if (state.view === 'admin') renderAdmin();
-            lucide.createIcons();
-        };
-
-        function renderHome() {
-            appContainer.innerHTML = `
-                <div class="flex justify-end mb-6 fade-in">
-                    <button onclick="window.shareProfile()" class="p-2 border-2 border-slate-200 dark:border-slate-800 rounded-lg font-bold text-xs uppercase flex items-center gap-2">
-                        <i data-lucide="share-2" class="w-4 h-4"></i> Partilhar
-                    </button>
-                </div>
-
-                <header class="text-center space-y-6 mb-10 fade-in">
-                    <img src="${state.profile.photo}" class="w-32 h-32 rounded-full border-4 border-indigo-600 mx-auto object-cover shadow-xl" onerror="this.src='https://via.placeholder.com/150'">
-                    <div class="space-y-2">
-                        <div class="flex items-center justify-center gap-2">
-                            <h1 class="text-3xl font-extrabold tracking-tight">${state.profile.name}</h1>
-                            ${state.profile.verified ? `<i data-lucide="badge-check" class="w-6 h-6 text-indigo-600 fill-indigo-600/10"></i>` : ''}
-                        </div>
-                        <p class="text-lg font-medium text-slate-600 dark:text-slate-400 max-w-sm mx-auto leading-snug">${state.profile.bio}</p>
-                    </div>
-                </header>
-
-                <div class="space-y-4">
-                    ${state.links.map((link) => `
-                        <a href="${link.url}" target="_blank" 
-                           onclick="window.trackClick('${link.id}')"
-                           class="link-card solid-card flex items-center p-5 rounded-xl group fade-in">
-                            <div class="p-3 bg-indigo-600 text-white rounded-lg mr-4">
-                                <i data-lucide="${link.icon || 'link'}" class="w-6 h-6"></i>
-                            </div>
-                            <span class="font-bold text-xl flex-1 text-slate-900 dark:text-slate-100">${link.title}</span>
-                            <i data-lucide="external-link" class="w-5 h-5 text-slate-400"></i>
-                        </a>
-                    `).join('')}
-                </div>
-
-                <div class="flex justify-center gap-8 mt-12 fade-in">
-                    ${Object.entries(state.socials).map(([key, value]) => value ? `
-                        <a href="${value}" target="_blank" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:text-indigo-600 transition-all">
-                            <i data-lucide="${key}" class="w-6 h-6"></i>
-                        </a>
-                    ` : '').join('')}
-                </div>
-
-                <footer class="mt-24 text-center pb-10 fade-in">
-                    <button onclick="window.setView('login')" class="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-6 py-3 rounded-lg font-bold text-xs uppercase tracking-widest">
-                        Configurações
-                    </button>
-                </footer>
-            `;
-        }
-
-        function renderLogin() {
-            appContainer.innerHTML = `
-                <div class="solid-card p-10 rounded-2xl shadow-2xl space-y-8 fade-in">
-                    <h2 class="text-2xl font-black text-center">Admin Access</h2>
-                    <div class="space-y-4">
-                        <label class="block font-bold text-sm">Palavra-passe:</label>
-                        <input type="password" id="passInput" class="admin-input w-full p-4 rounded-xl font-bold text-xl text-center">
-                        <button onclick="window.handleLogin()" class="w-full bg-indigo-600 text-white p-5 rounded-xl font-bold text-lg">Entrar</button>
-                        <button onclick="window.setView('home')" class="w-full font-bold text-slate-500">Voltar</button>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderAdmin() {
-            appContainer.innerHTML = `
-                <div class="flex items-center justify-between mb-8">
-                    <h2 class="text-2xl font-black uppercase tracking-tighter">Editor</h2>
-                    <button onclick="window.setView('home')" class="p-2 border-2 border-red-500 text-red-500 rounded-lg font-bold">FECHAR</button>
-                </div>
-
-                <div class="space-y-8 fade-in">
-                    <section class="space-y-4">
-                        <h3 class="font-black text-xs uppercase tracking-tighter text-indigo-600">Perfil</h3>
-                        <input type="text" id="editName" value="${state.profile.name}" class="admin-input w-full p-4 rounded-xl font-bold">
-                        <textarea id="editBio" class="admin-input w-full p-4 rounded-xl font-bold h-24">${state.profile.bio}</textarea>
-                        <input type="text" id="editPhoto" value="${state.profile.photo}" placeholder="URL da Foto" class="admin-input w-full p-4 rounded-xl">
-                        <label class="flex items-center gap-3 font-bold bg-slate-100 dark:bg-slate-800 p-4 rounded-xl cursor-pointer">
-                            <input type="checkbox" id="editVerified" ${state.profile.verified ? 'checked' : ''} class="w-6 h-6">
-                            Exibir Selo Verificado
-                        </label>
-                    </section>
-
-                    <section class="space-y-4">
-                        <div class="flex items-center justify-between px-2">
-                            <h3 class="font-black text-xs uppercase tracking-tighter text-indigo-600">Links</h3>
-                            <button onclick="window.addLink()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-xs">+ NOVO</button>
-                        </div>
-                        <div id="linksEditor" class="space-y-6">
-                            ${state.links.map((link, index) => `
-                                <div class="solid-card p-6 rounded-2xl space-y-4 relative">
-                                    <div class="flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/30 p-2 rounded-lg">
-                                        <span class="text-[10px] font-black uppercase">${link.clicks || 0} CLIQUES</span>
-                                        <button onclick="window.removeLink(${index})" class="text-red-500 font-bold uppercase text-[10px]">Eliminar</button>
-                                    </div>
-                                    <input type="text" value="${link.title}" oninput="window.updateLink(${index}, 'title', this.value)" placeholder="Título" class="admin-input w-full p-3 rounded-xl font-bold">
-                                    <input type="text" value="${link.url}" oninput="window.updateLink(${index}, 'url', this.value)" placeholder="Link" class="admin-input w-full p-3 rounded-xl text-sm">
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <input type="text" value="${link.icon || 'link'}" oninput="window.updateLink(${index}, 'icon', this.value)" placeholder="Ícone" class="admin-input p-2 rounded-lg text-xs">
-                                        <select onchange="window.updateLink(${index}, 'color', this.value)" class="admin-input p-2 rounded-lg text-xs font-bold">
-                                            <option value="indigo" ${link.color === 'indigo' ? 'selected' : ''}>Azul</option>
-                                            <option value="emerald" ${link.color === 'emerald' ? 'selected' : ''}>Verde</option>
-                                            <option value="rose" ${link.color === 'rose' ? 'selected' : ''}>Rosa</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </section>
-
-                    <button onclick="window.saveAll()" id="saveBtn" class="w-full bg-indigo-600 text-white p-6 rounded-2xl font-black text-xl shadow-2xl hover:bg-indigo-700 transition-all">
-                        PUBLICAR AGORA
-                    </button>
-                </div>
-            `;
-        }
-
-        window.setView = (view) => { state.view = view; window.render(); };
-        window.handleLogin = () => { if (document.getElementById('passInput').value === 'admin') window.setView('admin'); else showToast('Palavra-passe errada!', 'error'); };
         window.updateLink = (i, f, v) => { state.links[i][f] = v; };
-        window.addLink = () => { state.links.unshift({ id: 'l'+Date.now(), title: "Novo Link", url: "https://", icon: "link", color: "indigo", clicks: 0 }); window.render(); };
-        window.removeLink = (i) => { state.links.splice(i, 1); window.render(); };
-
+        window.addLink = () => {
+            state.links.unshift({ id: 'l'+Date.now(), title: "Novo Link", url: "https://", icon: "link", color: "indigo", clicks: 0 });
+            render();
+        };
+        window.removeLink = (i) => { state.links.splice(i, 1); render(); };
         window.saveAll = async () => {
-            if (!state.user) return;
             const btn = document.getElementById('saveBtn');
-            btn.disabled = true;
-            btn.innerHTML = "A ENVIAR...";
-
+            btn.disabled = true; btn.innerText = "A GUARDAR...";
             const profile = {
                 name: document.getElementById('editName').value,
                 bio: document.getElementById('editBio').value,
                 photo: document.getElementById('editPhoto').value,
                 verified: document.getElementById('editVerified').checked
             };
-
             try {
-                await setDoc(docRef, getPersistableData({ profile }));
-                showToast('Página Atualizada!', 'success');
+                await setDoc(docRef, { profile, links: state.links, socials: state.socials });
                 window.setView('home');
-            } catch (e) {
+            } catch (e) { 
                 console.error(e);
-                showToast('Erro ao salvar!', 'error');
-                btn.disabled = false;
-                btn.innerHTML = "TENTAR NOVAMENTE";
+                alert('Erro ao salvar no banco de dados!'); 
+                btn.disabled = false; 
+                btn.innerText = "TENTAR NOVAMENTE"; 
             }
         };
 
-        window.shareProfile = async () => {
-            if (navigator.share) {
-                try { await navigator.share({ title: state.profile.name, url: window.location.href }); } catch(e){}
-            } else {
-                navigator.clipboard.writeText(window.location.href);
-                showToast("Link copiado!", "success");
-            }
-        };
+        function render() {
+            const container = document.getElementById('app');
+            container.innerHTML = '';
+            if (state.view === 'home') container.innerHTML = renderHomeHTML();
+            else if (state.view === 'login') container.innerHTML = renderLoginHTML();
+            else if (state.view === 'admin') container.innerHTML = renderAdminHTML();
+            lucide.createIcons();
+        }
 
-        function showToast(msg, type) {
-            const t = document.createElement('div');
-            t.className = `fixed top-6 left-1/2 -translate-x-1/2 px-8 py-4 rounded-xl text-white font-black z-[100] shadow-2xl ${type === 'success' ? 'bg-indigo-600' : 'bg-red-600'}`;
-            t.textContent = msg;
-            document.body.appendChild(t);
-            setTimeout(() => t.remove(), 3000);
+        function renderHomeHTML() {
+            return `
+            <div class="fade-in">
+                <header class="text-center space-y-6 mb-10 pt-10">
+                    <img src="${state.profile.photo}" class="w-32 h-32 rounded-full border-4 border-indigo-600 mx-auto object-cover shadow-xl" onerror="this.src='https://via.placeholder.com/150'">
+                    <div class="space-y-2">
+                        <h1 class="text-3xl font-extrabold flex items-center justify-center gap-2">${state.profile.name} ${state.profile.verified ? '<i data-lucide="badge-check" class="text-indigo-600"></i>' : ''}</h1>
+                        <p class="text-lg text-slate-500 font-medium">${state.profile.bio}</p>
+                    </div>
+                </header>
+                <div class="space-y-4">
+                    ${state.links.length ? state.links.map(l => `<a href="${l.url}" target="_blank" class="solid-card link-card flex items-center p-5 rounded-xl font-bold text-xl"><i data-lucide="${l.icon || 'link'}" class="mr-4 text-indigo-600"></i>${l.title}</a>`).join('') : '<p class="text-center text-slate-400 py-10">Página configurada com sucesso. Entra no Admin para adicionar links.</p>'}
+                </div>
+                <footer class="mt-20 text-center pb-10"><button onclick="window.setView('login')" class="bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity">Configurações</button></footer>
+            </div>`;
+        }
+
+        function renderLoginHTML() {
+            return `<div class="solid-card p-10 rounded-2xl space-y-6 fade-in shadow-2xl">
+                <h2 class="text-2xl font-black text-center">Painel Admin</h2>
+                <input type="password" id="passInput" class="admin-input text-center text-xl" placeholder="Senha">
+                <button onclick="window.handleLogin()" class="w-full bg-indigo-600 text-white p-4 rounded-xl font-bold">ENTRAR</button>
+                <button onclick="window.setView('home')" class="w-full text-slate-400 font-bold">VOLTAR</button>
+            </div>`;
+        }
+
+        function renderAdminHTML() {
+            return `<div class="space-y-8 fade-in">
+                <div class="flex justify-between items-center"><h2 class="text-2xl font-black italic tracking-tighter text-indigo-600">Editor</h2><button onclick="window.setView('home')" class="text-red-500 font-black">X</button></div>
+                <section class="space-y-4">
+                    <input type="text" id="editName" value="${state.profile.name}" class="admin-input" placeholder="Nome">
+                    <textarea id="editBio" class="admin-input h-24" placeholder="Bio">${state.profile.bio}</textarea>
+                    <input type="text" id="editPhoto" value="${state.profile.photo}" placeholder="Link da Foto" class="admin-input">
+                    <label class="flex items-center gap-3 font-bold bg-slate-50 dark:bg-slate-900 p-4 rounded-xl"><input type="checkbox" id="editVerified" ${state.profile.verified ? 'checked' : ''} class="w-5 h-5"> Selo Verificado</label>
+                </section>
+                <section class="space-y-4">
+                    <div class="flex justify-between items-center"><h3 class="text-xs font-black uppercase">Links</h3><button onclick="window.addLink()" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-black">+ NOVO</button></div>
+                    <div class="space-y-6">
+                        ${state.links.map((l, i) => `<div class="solid-card p-6 rounded-2xl space-y-4 relative">
+                            <div class="flex justify-between items-center"><span class="text-[10px] font-bold text-slate-400 uppercase">Botão ${i+1}</span><button onclick="window.removeLink(${i})" class="text-red-500 font-bold text-[10px] uppercase">Eliminar</button></div>
+                            <input type="text" value="${l.title}" oninput="window.updateLink(${i}, 'title', this.value)" placeholder="Título" class="admin-input">
+                            <input type="text" value="${l.url}" oninput="window.updateLink(${i}, 'url', this.value)" placeholder="URL" class="admin-input">
+                        </div>`).join('')}
+                    </div>
+                </section>
+                <button onclick="window.saveAll()" id="saveBtn" class="w-full bg-indigo-600 text-white p-6 rounded-2xl font-black text-xl shadow-2xl hover:bg-indigo-700 transition-all">PUBLICAR AGORA</button>
+            </div>`;
         }
 
         init();
     </script>
 </body>
-
 </html>
