@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bio | Linktree Profissional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            min-height: 100vh;
+            background-color: #ffffff;
+            color: #0f172a;
+        }
+
+        .dark body { 
+            background-color: #020617;
+            color: #f8fafc;
+        }
+
+        .solid-card {
+            background-color: #f1f5f9;
+            border: 2px solid #e2e8f0;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .dark .solid-card {
+            background-color: #1e293b;
+            border: 2px solid #334155;
+        }
+
+        .link-card:hover {
+            transform: translateY(-2px);
+            border-color: #4f46e5;
+            background-color: #ffffff;
+        }
+
+        .dark .link-card:hover {
+            background-color: #0f172a;
+            border-color: #818cf8;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .admin-input {
+            border: 2px solid #cbd5e1;
+            background-color: #ffffff;
+        }
+
+        .dark .admin-input {
+            border: 2px solid #334155;
+            background-color: #0f172a;
+            color: white;
+        }
+
+        .admin-input:focus {
+            border-color: #4f46e5;
+            outline: none;
+        }
+    </style>
+</head>
+<body class="antialiased transition-colors duration-300">
+
+    <div id="app" class="max-w-md mx-auto px-6 py-12 relative z-10">
+        <div id="loading" class="flex flex-col items-center justify-center space-y-4 py-32">
+            <div class="w-10 h-10 border-4 border-slate-300 border-t-indigo-600 rounded-full animate-spin"></div>
+            <p class="font-bold text-slate-500 text-sm tracking-widest text-center uppercase">A Carregar...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // ==========================================
+        // CONFIGURAÇÃO DO FIREBASE
+        // Substitui os valores abaixo pelos teus dados do Console do Firebase
+        // ==========================================
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                apiKey: "A tua API Key aqui",
+                authDomain: "teu-projeto.firebaseapp.com",
+                projectId: "teu-projeto",
+                storageBucket: "teu-projeto.appspot.com",
+                messagingSenderId: "000000000000",
+                appId: "1:000000000000:web:000000000000"
+            };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'meu-linktree-oficial';
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let state = {
+            profile: {
+                name: "O Seu Nome",
+                bio: "Desenvolvedor & Criador de Conteúdo",
+                photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400",
+                verified: true
+            },
+            links: [
+                { id: 'l1', title: "Website", url: "#", icon: "globe", color: "indigo", clicks: 0 },
+                { id: 'l2', title: "WhatsApp", url: "#", icon: "message-circle", color: "emerald", clicks: 0 }
+            ],
+            socials: { instagram: "", linkedin: "", twitter: "", github: "" },
+            view: 'home',
+            user: null
+        };
+
+        const appContainer = document.getElementById('app');
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'main');
+
+        async function init() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    state.user = user;
+                    if (user) setupDataListener();
+                });
+            } catch (error) { 
+                console.error("Erro Auth:", error);
+                appContainer.innerHTML = '<p class="text-red-500 font-bold text-center">Configura o Firebase no código para começar.</p>';
+            }
+        }
+
+        function setupDataListener() {
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    state.profile = data.profile || state.profile;
+                    state.links = data.links || state.links;
+                    state.socials = data.socials || state.socials;
+                }
+                render();
+            }, (err) => {
+                console.error("Firestore error:", err);
+                render();
+            });
+        }
+
+        const getPersistableData = (overrides = {}) => ({
+            profile: overrides.profile || state.profile,
+            links: overrides.links || state.links,
+            socials: overrides.socials || state.socials
+        });
+
+        window.trackClick = async (linkId) => {
+            if (!state.user) return;
+            const updatedLinks = state.links.map(l => 
+                l.id === linkId ? { ...l, clicks: (l.clicks || 0) + 1 } : l
+            );
+            try {
+                await setDoc(docRef, getPersistableData({ links: updatedLinks }), { merge: true });
+            } catch (e) { console.error(e); }
+        };
+
+        window.render = () => {
+            appContainer.innerHTML = '';
+            if (state.view === 'home') renderHome();
+            else if (state.view === 'login') renderLogin();
+            else if (state.view === 'admin') renderAdmin();
+            lucide.createIcons();
+        };
+
+        function renderHome() {
+            appContainer.innerHTML = `
+                <div class="flex justify-end mb-6 fade-in">
+                    <button onclick="window.shareProfile()" class="p-2 border-2 border-slate-200 dark:border-slate-800 rounded-lg font-bold text-xs uppercase flex items-center gap-2">
+                        <i data-lucide="share-2" class="w-4 h-4"></i> Partilhar
+                    </button>
+                </div>
+
+                <header class="text-center space-y-6 mb-10 fade-in">
+                    <img src="${state.profile.photo}" class="w-32 h-32 rounded-full border-4 border-indigo-600 mx-auto object-cover shadow-xl" onerror="this.src='https://via.placeholder.com/150'">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-center gap-2">
+                            <h1 class="text-3xl font-extrabold tracking-tight">${state.profile.name}</h1>
+                            ${state.profile.verified ? `<i data-lucide="badge-check" class="w-6 h-6 text-indigo-600 fill-indigo-600/10"></i>` : ''}
+                        </div>
+                        <p class="text-lg font-medium text-slate-600 dark:text-slate-400 max-w-sm mx-auto leading-snug">${state.profile.bio}</p>
+                    </div>
+                </header>
+
+                <div class="space-y-4">
+                    ${state.links.map((link) => `
+                        <a href="${link.url}" target="_blank" 
+                           onclick="window.trackClick('${link.id}')"
+                           class="link-card solid-card flex items-center p-5 rounded-xl group fade-in">
+                            <div class="p-3 bg-indigo-600 text-white rounded-lg mr-4">
+                                <i data-lucide="${link.icon || 'link'}" class="w-6 h-6"></i>
+                            </div>
+                            <span class="font-bold text-xl flex-1 text-slate-900 dark:text-slate-100">${link.title}</span>
+                            <i data-lucide="external-link" class="w-5 h-5 text-slate-400"></i>
+                        </a>
+                    `).join('')}
+                </div>
+
+                <div class="flex justify-center gap-8 mt-12 fade-in">
+                    ${Object.entries(state.socials).map(([key, value]) => value ? `
+                        <a href="${value}" target="_blank" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:text-indigo-600 transition-all">
+                            <i data-lucide="${key}" class="w-6 h-6"></i>
+                        </a>
+                    ` : '').join('')}
+                </div>
+
+                <footer class="mt-24 text-center pb-10 fade-in">
+                    <button onclick="window.setView('login')" class="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-6 py-3 rounded-lg font-bold text-xs uppercase tracking-widest">
+                        Configurações
+                    </button>
+                </footer>
+            `;
+        }
+
+        function renderLogin() {
+            appContainer.innerHTML = `
+                <div class="solid-card p-10 rounded-2xl shadow-2xl space-y-8 fade-in">
+                    <h2 class="text-2xl font-black text-center">Admin Access</h2>
+                    <div class="space-y-4">
+                        <label class="block font-bold text-sm">Palavra-passe:</label>
+                        <input type="password" id="passInput" class="admin-input w-full p-4 rounded-xl font-bold text-xl text-center">
+                        <button onclick="window.handleLogin()" class="w-full bg-indigo-600 text-white p-5 rounded-xl font-bold text-lg">Entrar</button>
+                        <button onclick="window.setView('home')" class="w-full font-bold text-slate-500">Voltar</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAdmin() {
+            appContainer.innerHTML = `
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="text-2xl font-black uppercase tracking-tighter">Editor</h2>
+                    <button onclick="window.setView('home')" class="p-2 border-2 border-red-500 text-red-500 rounded-lg font-bold">FECHAR</button>
+                </div>
+
+                <div class="space-y-8 fade-in">
+                    <section class="space-y-4">
+                        <h3 class="font-black text-xs uppercase tracking-tighter text-indigo-600">Perfil</h3>
+                        <input type="text" id="editName" value="${state.profile.name}" class="admin-input w-full p-4 rounded-xl font-bold">
+                        <textarea id="editBio" class="admin-input w-full p-4 rounded-xl font-bold h-24">${state.profile.bio}</textarea>
+                        <input type="text" id="editPhoto" value="${state.profile.photo}" placeholder="URL da Foto" class="admin-input w-full p-4 rounded-xl">
+                        <label class="flex items-center gap-3 font-bold bg-slate-100 dark:bg-slate-800 p-4 rounded-xl cursor-pointer">
+                            <input type="checkbox" id="editVerified" ${state.profile.verified ? 'checked' : ''} class="w-6 h-6">
+                            Exibir Selo Verificado
+                        </label>
+                    </section>
+
+                    <section class="space-y-4">
+                        <div class="flex items-center justify-between px-2">
+                            <h3 class="font-black text-xs uppercase tracking-tighter text-indigo-600">Links</h3>
+                            <button onclick="window.addLink()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-xs">+ NOVO</button>
+                        </div>
+                        <div id="linksEditor" class="space-y-6">
+                            ${state.links.map((link, index) => `
+                                <div class="solid-card p-6 rounded-2xl space-y-4 relative">
+                                    <div class="flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/30 p-2 rounded-lg">
+                                        <span class="text-[10px] font-black uppercase">${link.clicks || 0} CLIQUES</span>
+                                        <button onclick="window.removeLink(${index})" class="text-red-500 font-bold uppercase text-[10px]">Eliminar</button>
+                                    </div>
+                                    <input type="text" value="${link.title}" oninput="window.updateLink(${index}, 'title', this.value)" placeholder="Título" class="admin-input w-full p-3 rounded-xl font-bold">
+                                    <input type="text" value="${link.url}" oninput="window.updateLink(${index}, 'url', this.value)" placeholder="Link" class="admin-input w-full p-3 rounded-xl text-sm">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input type="text" value="${link.icon || 'link'}" oninput="window.updateLink(${index}, 'icon', this.value)" placeholder="Ícone" class="admin-input p-2 rounded-lg text-xs">
+                                        <select onchange="window.updateLink(${index}, 'color', this.value)" class="admin-input p-2 rounded-lg text-xs font-bold">
+                                            <option value="indigo" ${link.color === 'indigo' ? 'selected' : ''}>Azul</option>
+                                            <option value="emerald" ${link.color === 'emerald' ? 'selected' : ''}>Verde</option>
+                                            <option value="rose" ${link.color === 'rose' ? 'selected' : ''}>Rosa</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </section>
+
+                    <button onclick="window.saveAll()" id="saveBtn" class="w-full bg-indigo-600 text-white p-6 rounded-2xl font-black text-xl shadow-2xl hover:bg-indigo-700 transition-all">
+                        PUBLICAR AGORA
+                    </button>
+                </div>
+            `;
+        }
+
+        window.setView = (view) => { state.view = view; window.render(); };
+        window.handleLogin = () => { if (document.getElementById('passInput').value === 'admin') window.setView('admin'); else showToast('Palavra-passe errada!', 'error'); };
+        window.updateLink = (i, f, v) => { state.links[i][f] = v; };
+        window.addLink = () => { state.links.unshift({ id: 'l'+Date.now(), title: "Novo Link", url: "https://", icon: "link", color: "indigo", clicks: 0 }); window.render(); };
+        window.removeLink = (i) => { state.links.splice(i, 1); window.render(); };
+
+        window.saveAll = async () => {
+            if (!state.user) return;
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerHTML = "A ENVIAR...";
+
+            const profile = {
+                name: document.getElementById('editName').value,
+                bio: document.getElementById('editBio').value,
+                photo: document.getElementById('editPhoto').value,
+                verified: document.getElementById('editVerified').checked
+            };
+
+            try {
+                await setDoc(docRef, getPersistableData({ profile }));
+                showToast('Página Atualizada!', 'success');
+                window.setView('home');
+            } catch (e) {
+                console.error(e);
+                showToast('Erro ao salvar!', 'error');
+                btn.disabled = false;
+                btn.innerHTML = "TENTAR NOVAMENTE";
+            }
+        };
+
+        window.shareProfile = async () => {
+            if (navigator.share) {
+                try { await navigator.share({ title: state.profile.name, url: window.location.href }); } catch(e){}
+            } else {
+                navigator.clipboard.writeText(window.location.href);
+                showToast("Link copiado!", "success");
+            }
+        };
+
+        function showToast(msg, type) {
+            const t = document.createElement('div');
+            t.className = `fixed top-6 left-1/2 -translate-x-1/2 px-8 py-4 rounded-xl text-white font-black z-[100] shadow-2xl ${type === 'success' ? 'bg-indigo-600' : 'bg-red-600'}`;
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        init();
+    </script>
+</body>
+</html>
